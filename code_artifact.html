@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeQuest Tracker - Minimal Task & Goal Dashboard</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts - Kanit & Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        stone: {
+                            20: '#fcfcfb',
+                            50: '#fbfbf9',
+                            100: '#f4f4f0',
+                            200: '#e7e5e0',
+                            300: '#d6d3d1',
+                            700: '#44403c',
+                            800: '#292524',
+                            900: '#1c1917',
+                            950: '#0c0a09',
+                        },
+                        sage: {
+                            50: '#f4f7f4',
+                            100: '#e3ebe3',
+                            500: '#789378',
+                            600: '#5e775e',
+                            700: '#485c48',
+                        },
+                        sand: {
+                            100: '#f7f4ee',
+                            200: '#eae3d2',
+                            500: '#b8a082',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Prompt', 'Kanit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Prompt', 'Kanit', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        .minimal-card {
+            background-color: #ffffff;
+            border: 1px solid rgba(231, 229, 224, 0.7);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+        }
+        
+        .dark .minimal-card {
+            background-color: #292524;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d6d3d1;
+            border-radius: 99px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #44403c;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-200 min-h-screen antialiased">
+
+    <div id="app" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <!-- Minimal Header Section -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 pb-6 border-b border-stone-200/80 dark:border-stone-800">
+            <div>
+                <div class="flex items-center gap-3">
+                    <span class="w-3 h-3 rounded-full bg-sage-500 inline-block"></span>
+                    <h1 class="text-2xl sm:text-3xl font-medium tracking-tight text-stone-900 dark:text-stone-100">
+                        LifeQuest
+                    </h1>
+                </div>
+                <p class="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1 font-light">พื้นที่จัดการงานและเป้าหมายด้วยความเรียบง่าย</p>
+            </div>
+
+            <!-- Gamification & Mode Toggle -->
+            <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
+                <!-- Streak Badge -->
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60 text-stone-700 dark:text-stone-300">
+                    <i class="fa-solid fa-fire text-amber-600 dark:text-amber-500 text-sm"></i>
+                    <span id="streakCount" class="font-medium text-sm">0</span>
+                    <span class="text-xs text-stone-400 font-light">วันต่อเนื่อง</span>
+                </div>
+
+                <!-- Level Badge -->
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60 text-stone-700 dark:text-stone-300">
+                    <i class="fa-regular fa-star text-sage-600 dark:text-sage-400 text-sm"></i>
+                    <div class="text-left">
+                        <span class="text-xs font-medium">LV <span id="userLevel">1</span></span>
+                        <div class="w-12 bg-stone-200 dark:bg-stone-700 h-1 rounded-full overflow-hidden mt-1 inline-block ml-1">
+                            <div id="xpBar" class="bg-sage-600 dark:bg-sage-500 h-full w-0 transition-all duration-300"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dark Mode Toggle -->
+                <button id="themeToggle" class="p-2.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition">
+                    <i id="themeIcon" class="fa-regular fa-moon text-base"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Summary Cards Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-10">
+            <div class="minimal-card p-5 rounded-2xl">
+                <p class="text-xs font-light text-stone-400 dark:text-stone-500 uppercase tracking-wider">งานทั้งหมด</p>
+                <h3 id="totalTasksCount" class="text-2xl font-normal mt-2 text-stone-900 dark:text-stone-100">0</h3>
+            </div>
+
+            <div class="minimal-card p-5 rounded-2xl">
+                <p class="text-xs font-light text-stone-400 dark:text-stone-500 uppercase tracking-wider">ทำเสร็จแล้ว</p>
+                <h3 id="completedTasksCount" class="text-2xl font-normal mt-2 text-sage-600 dark:text-sage-400">0</h3>
+            </div>
+
+            <div class="minimal-card p-5 rounded-2xl">
+                <p class="text-xs font-light text-stone-400 dark:text-stone-500 uppercase tracking-wider">รอดำเนินการ</p>
+                <h3 id="pendingTasksCount" class="text-2xl font-normal mt-2 text-stone-800 dark:text-stone-200">0</h3>
+            </div>
+
+            <div class="minimal-card p-5 rounded-2xl">
+                <p class="text-xs font-light text-stone-400 dark:text-stone-500 uppercase tracking-wider">ความคืบหน้า</p>
+                <h3 id="completionPercentage" class="text-2xl font-normal mt-2 text-stone-900 dark:text-stone-100">0%</h3>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-10">
+            
+            <!-- Left Column: Tasks Section (2 Cols width) -->
+            <div class="lg:col-span-2 space-y-8">
+                
+                <!-- Minimal Task Input Form -->
+                <div class="minimal-card p-6 rounded-2xl">
+                    <h2 class="text-base font-medium mb-4 text-stone-800 dark:text-stone-200 flex items-center gap-2">
+                        <i class="fa-regular fa-square-plus text-stone-400"></i> เพิ่มรายการใหม่
+                    </h2>
+
+                    <form id="taskForm" class="space-y-4">
+                        <div>
+                            <input type="text" id="taskInput" required placeholder="สิ่งที่ต้องทำต่อไป..." 
+                                class="w-full px-4 py-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/60 text-sm focus:outline-none focus:border-stone-400 dark:focus:border-stone-500 transition">
+                        </div>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <!-- Category Select -->
+                            <div>
+                                <label class="block text-[11px] font-light text-stone-400 mb-1">หมวดหมู่</label>
+                                <select id="categorySelect" class="w-full px-3 py-2 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/60 text-xs focus:outline-none focus:border-stone-400">
+                                    <option value="งาน">💼 งาน</option>
+                                    <option value="ส่วนตัว">👤 ส่วนตัว</option>
+                                    <option value="การเรียน">📚 การเรียน</option>
+                                    <option value="สุขภาพ">🏋️️ สุขภาพ</option>
+                                    <option value="การเงิน">💰 การเงิน</option>
+                                </select>
+                            </div>
+
+                            <!-- Priority Select -->
+                            <div>
+                                <label class="block text-[11px] font-light text-stone-400 mb-1">ความสำคัญ</label>
+                                <select id="prioritySelect" class="w-full px-3 py-2 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/60 text-xs focus:outline-none focus:border-stone-400">
+                                    <option value="low">ต่ำ</option>
+                                    <option value="medium" selected>ปานกลาง</option>
+                                    <option value="high">สูง</option>
+                                </select>
+                            </div>
+
+                            <!-- Due Date -->
+                            <div>
+                                <label class="block text-[11px] font-light text-stone-400 mb-1">กำหนดส่ง</label>
+                                <input type="date" id="dueDateInput" class="w-full px-3 py-2 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/60 text-xs focus:outline-none focus:border-stone-400">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-stone-100 dark:text-stone-900 text-xs font-medium rounded-xl transition shadow-sm">
+                            บันทึกงาน
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Minimal Task List -->
+                <div class="minimal-card p-6 rounded-2xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <h2 class="text-base font-medium text-stone-800 dark:text-stone-200">
+                            รายการงาน
+                        </h2>
+                        
+                        <!-- Filters -->
+                        <div class="flex gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-xl text-xs">
+                            <button class="filter-btn active px-3 py-1 rounded-lg font-medium transition" data-filter="all">ทั้งหมด</button>
+                            <button class="filter-btn px-3 py-1 rounded-lg font-medium transition text-stone-500" data-filter="pending">กำลังทำ</button>
+                            <button class="filter-btn px-3 py-1 rounded-lg font-medium transition text-stone-500" data-filter="completed">เสร็จแล้ว</button>
+                        </div>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="relative mb-4">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-stone-400 text-xs"></i>
+                        <input type="text" id="searchInput" placeholder="ค้นหางาน..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-stone-50 dark:bg-slate-800/50 border border-stone-200 dark:border-stone-700/60 text-xs focus:outline-none focus:border-stone-400">
+                    </div>
+
+                    <!-- Tasks List Container -->
+                    <div id="taskList" class="space-y-2.5 max-h-[480px] overflow-y-auto custom-scrollbar pr-1">
+                        <!-- Dynamic Minimal Tasks -->
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="emptyState" class="hidden text-center py-12">
+                        <i class="fa-regular fa-folder-open text-3xl text-stone-300 dark:text-stone-600 mb-2"></i>
+                        <p class="text-xs text-stone-400 font-light">ไม่มีรายการงานในหมวดนี้</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Goals & Minimal Stats -->
+            <div class="space-y-8">
+                
+                <!-- Minimal Goals Section -->
+                <div class="minimal-card p-6 rounded-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-base font-medium text-stone-800 dark:text-stone-200">
+                            เป้าหมายระยะยาว
+                        </h2>
+                        <button id="addGoalBtn" class="text-xs text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 transition">
+                            <i class="fa-solid fa-plus mr-1"></i>เพิ่ม
+                        </button>
+                    </div>
+
+                    <!-- Goals Container -->
+                    <div id="goalsContainer" class="space-y-4">
+                        <!-- Dynamically populated goals -->
+                    </div>
+                </div>
+
+                <!-- Minimal Category Chart -->
+                <div class="minimal-card p-6 rounded-2xl">
+                    <h2 class="text-base font-medium text-stone-800 dark:text-stone-200 mb-4">
+                        สัดส่วนงาน
+                    </h2>
+                    <div class="relative h-44">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Minimal Quote Container -->
+                <div class="p-5 rounded-2xl bg-stone-100/70 dark:bg-stone-800/40 border border-stone-200/50 dark:border-stone-800">
+                    <p id="quoteText" class="text-xs italic text-stone-600 dark:text-stone-400 font-light leading-relaxed">
+                        "ความสำเร็จเกิดจากการลงมือทำสิ่งเล็กๆ อย่างต่อเนื่องทุกวัน"
+                    </p>
+                    <p id="quoteAuthor" class="text-[11px] font-medium text-stone-400 mt-2 text-right">- LifeQuest</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Goal Modal -->
+    <div id="goalModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="minimal-card bg-white dark:bg-stone-800 p-6 rounded-2xl max-w-sm w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-sm font-medium">เพิ่มเป้าหมายใหม่</h3>
+                <button id="closeGoalModal" class="text-stone-400 hover:text-stone-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="goalForm" class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-light text-stone-400 mb-1">ชื่อเป้าหมาย</label>
+                    <input type="text" id="goalTitleInput" required placeholder="เช่น อ่านหนังสือ 10 เล่ม" class="w-full px-3 py-2 rounded-xl bg-stone-50 dark:bg-stone-700/50 border border-stone-200 dark:border-stone-600 text-xs focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-light text-stone-400 mb-1">จำนวนเป้าหมาย (Target)</label>
+                    <input type="number" id="goalTargetInput" min="1" value="10" required class="w-full px-3 py-2 rounded-xl bg-stone-50 dark:bg-stone-700/50 border border-stone-200 dark:border-stone-600 text-xs focus:outline-none">
+                </div>
+                <button type="submit" class="w-full py-2 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-stone-100 dark:text-stone-900 text-xs font-medium rounded-xl transition">บันทึกเป้าหมาย</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        const state = {
+            tasks: JSON.parse(localStorage.getItem('lifequest_tasks')) || [
+                { id: '1', title: 'วางโครงร่าง Minimal Dashboard Design', category: 'งาน', priority: 'high', completed: true, dueDate: '2026-10-06' },
+                { id: '2', title: 'เดินออกกำลังกายยามเช้า 20 นาที', category: 'สุขภาพ', priority: 'medium', completed: false, dueDate: '2026-10-07' },
+                { id: '3', title: 'อ่านบทความปรัชญามินิมอล', category: 'การเรียน', priority: 'low', completed: false, dueDate: '2026-10-08' }
+            ],
+            goals: JSON.parse(localStorage.getItem('lifequest_goals')) || [
+                { id: 'g1', title: 'อ่านหนังสือเล่มโปรด', current: 5, target: 10 },
+                { id: 'g2', title: 'ออมเงินเป้าหมาย 30,000 บาท', current: 18000, target: 30000 }
+            ],
+            xp: parseInt(localStorage.getItem('lifequest_xp')) || 140,
+            streak: parseInt(localStorage.getItem('lifequest_streak')) || 5,
+            currentFilter: 'all',
+            searchQuery: ''
+        };
+
+        const quotes = [
+            { text: "ความเรียบง่ายคือจุดสูงสุดของความซับซ้อน", author: "Leonardo da Vinci" },
+            { text: "ทำสิ่งน้อยลงอย่างประณีตและตั้งใจ", author: "Minimalist Mindset" },
+            { text: "ความสุขไม่ได้เกิดจากการมีเพิ่มขึ้น แต่เกิดจากต้องการน้อยลง", author: "Socrates" }
+        ];
+
+        let categoryChartInstance = null;
+
+        function playCompletionSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
+                osc.frequency.exponentialRampToValueAtTime(554.37, audioCtx.currentTime + 0.12); // C#5
+                
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.25);
+            } catch(e) {}
+        }
+
+        function saveData() {
+            localStorage.setItem('lifequest_tasks', JSON.stringify(state.tasks));
+            localStorage.setItem('lifequest_goals', JSON.stringify(state.goals));
+            localStorage.setItem('lifequest_xp', state.xp.toString());
+            localStorage.setItem('lifequest_streak', state.streak.toString());
+        }
+
+        function addXP(amount) {
+            state.xp += amount;
+            saveData();
+            updateLevelUI();
+        }
+
+        function updateLevelUI() {
+            const level = Math.floor(state.xp / 100) + 1;
+            const currentXP = state.xp % 100;
+            
+            document.getElementById('userLevel').innerText = level;
+            document.getElementById('xpBar').style.width = `${currentXP}%`;
+            document.getElementById('streakCount').innerText = state.streak;
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 40,
+                    spread: 50,
+                    origin: { y: 0.8 },
+                    colors: ['#789378', '#b8a082', '#d6d3d1']
+                });
+            }
+        }
+
+        // Render Minimal Tasks
+        function renderTasks() {
+            const taskList = document.getElementById('taskList');
+            const emptyState = document.getElementById('emptyState');
+            taskList.innerHTML = '';
+
+            let filteredTasks = state.tasks.filter(task => {
+                const matchesFilter = 
+                    state.currentFilter === 'all' ? true :
+                    state.currentFilter === 'completed' ? task.completed :
+                    !task.completed;
+
+                const matchesSearch = task.title.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+                                     task.category.toLowerCase().includes(state.searchQuery.toLowerCase());
+
+                return matchesFilter && matchesSearch;
+            });
+
+            if (filteredTasks.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filteredTasks.forEach(task => {
+                const taskCard = document.createElement('div');
+                taskCard.className = `p-3.5 rounded-xl border transition duration-200 flex items-center justify-between gap-3 ${
+                    task.completed 
+                    ? 'bg-stone-50/50 dark:bg-stone-800/20 border-stone-100 dark:border-stone-800/40 opacity-50' 
+                    : 'bg-white dark:bg-stone-800 border-stone-200/80 dark:border-stone-700/60 hover:border-stone-300 dark:hover:border-stone-600'
+                }`;
+
+                const priorityDot = {
+                    high: 'bg-rose-400',
+                    medium: 'bg-amber-400',
+                    low: 'bg-emerald-400'
+                };
+
+                taskCard.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <button onclick="toggleTask('${task.id}')" class="flex-shrink-0 text-base transition">
+                            ${task.completed 
+                                ? '<i class="fa-solid fa-circle-check text-sage-600 dark:text-sage-400"></i>' 
+                                : '<i class="fa-regular fa-circle text-stone-300 hover:text-stone-500"></i>'}
+                        </button>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-normal text-xs sm:text-sm truncate ${task.completed ? 'line-through text-stone-400' : 'text-stone-800 dark:text-stone-200'}">
+                                ${escapeHtml(task.title)}
+                            </p>
+                            <div class="flex items-center gap-2 mt-1 flex-wrap text-[10px]">
+                                <span class="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-700/50 text-stone-500 dark:text-stone-400 font-light">
+                                    ${task.category}
+                                </span>
+                                <span class="flex items-center gap-1 text-stone-400 font-light">
+                                    <span class="w-1.5 h-1.5 rounded-full ${priorityDot[task.priority]}"></span>
+                                    ${task.priority}
+                                </span>
+                                ${task.dueDate ? `
+                                    <span class="text-stone-400 flex items-center gap-1 font-light">
+                                        <i class="fa-regular fa-calendar text-[9px]"></i> ${task.dueDate}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="deleteTask('${task.id}')" class="text-stone-300 hover:text-rose-500 p-1.5 rounded-lg transition">
+                        <i class="fa-regular fa-trash-can text-xs"></i>
+                    </button>
+                `;
+
+                taskList.appendChild(taskCard);
+            });
+
+            updateStats();
+            updateChart();
+        }
+
+        window.toggleTask = function(id) {
+            const task = state.tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                if (task.completed) {
+                    addXP(20);
+                    playCompletionSound();
+                    triggerConfetti();
+                }
+                saveData();
+                renderTasks();
+            }
+        };
+
+        window.deleteTask = function(id) {
+            state.tasks = state.tasks.filter(t => t.id !== id);
+            saveData();
+            renderTasks();
+        };
+
+        // Render Minimal Goals
+        function renderGoals() {
+            const container = document.getElementById('goalsContainer');
+            container.innerHTML = '';
+
+            state.goals.forEach(goal => {
+                const percent = Math.min(100, Math.round((goal.current / goal.target) * 100));
+                const goalEl = document.createElement('div');
+                goalEl.className = 'p-3.5 rounded-xl bg-stone-50/70 dark:bg-stone-800/40 border border-stone-200/50 dark:border-stone-700/50 space-y-2';
+
+                goalEl.innerHTML = `
+                    <div class="flex justify-between items-center text-xs font-normal">
+                        <span class="text-stone-700 dark:text-stone-300">${escapeHtml(goal.title)}</span>
+                        <span class="text-[10px] text-stone-400 font-light">${goal.current} / ${goal.target} (${percent}%)</span>
+                    </div>
+                    <div class="w-full bg-stone-200 dark:bg-stone-700 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-sage-600 dark:bg-sage-500 h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                    </div>
+                    <div class="flex justify-end gap-1 pt-0.5">
+                        <button onclick="updateGoalProgress('${goal.id}', -1)" class="px-2 py-0.5 text-[10px] bg-stone-200/80 dark:bg-stone-700 hover:bg-stone-300 rounded text-stone-600 dark:text-stone-300 transition">-1</button>
+                        <button onclick="updateGoalProgress('${goal.id}', 1)" class="px-2 py-0.5 text-[10px] bg-stone-800 dark:bg-stone-200 text-stone-100 dark:text-stone-900 rounded transition">+1</button>
+                    </div>
+                `;
+
+                container.appendChild(goalEl);
+            });
+        }
+
+        window.updateGoalProgress = function(id, amount) {
+            const goal = state.goals.find(g => g.id === id);
+            if (goal) {
+                goal.current = Math.max(0, goal.current + amount);
+                if (goal.current >= goal.target) {
+                    addXP(40);
+                    triggerConfetti();
+                }
+                saveData();
+                renderGoals();
+            }
+        };
+
+        function updateStats() {
+            const total = state.tasks.length;
+            const completed = state.tasks.filter(t => t.completed).length;
+            const pending = total - completed;
+            const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+            document.getElementById('totalTasksCount').innerText = total;
+            document.getElementById('completedTasksCount').innerText = completed;
+            document.getElementById('pendingTasksCount').innerText = pending;
+            document.getElementById('completionPercentage').innerText = `${percent}%`;
+        }
+
+        // Minimal Chart
+        function updateChart() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            const categoryCounts = {};
+            state.tasks.forEach(task => {
+                categoryCounts[task.category] = (categoryCounts[task.category] || 0) + 1;
+            });
+
+            const labels = Object.keys(categoryCounts);
+            const data = Object.values(categoryCounts);
+
+            if (categoryChartInstance) {
+                categoryChartInstance.destroy();
+            }
+
+            if (labels.length === 0) return;
+
+            const isDark = document.documentElement.classList.contains('dark');
+
+            categoryChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#789378', '#b8a082', '#a3a3a3', '#d4a373', '#8d99ae'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: isDark ? '#a8a29e' : '#78716c',
+                                font: { family: 'Prompt', size: 11 },
+                                boxWidth: 10,
+                                padding: 12
+                            }
+                        }
+                    },
+                    cutout: '75%'
+                }
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            const themeToggleBtn = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                themeIcon.className = 'fa-regular fa-sun text-base text-amber-400';
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeIcon.className = 'fa-regular fa-moon text-base';
+            }
+
+            themeToggleBtn.addEventListener('click', () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                    themeIcon.className = 'fa-regular fa-moon text-base';
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                    themeIcon.className = 'fa-regular fa-sun text-base text-amber-400';
+                }
+                updateChart();
+            });
+
+            document.getElementById('taskForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const title = document.getElementById('taskInput').value.trim();
+                const category = document.getElementById('categorySelect').value;
+                const priority = document.getElementById('prioritySelect').value;
+                const dueDate = document.getElementById('dueDateInput').value;
+
+                if (title) {
+                    state.tasks.unshift({
+                        id: Date.now().toString(),
+                        title,
+                        category,
+                        priority,
+                        completed: false,
+                        dueDate
+                    });
+                    
+                    saveData();
+                    renderTasks();
+                    document.getElementById('taskInput').value = '';
+                }
+            });
+
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.filter-btn').forEach(b => {
+                        b.classList.remove('active', 'bg-white', 'dark:bg-stone-700', 'shadow-xs', 'text-stone-900', 'dark:text-stone-100');
+                        b.classList.add('text-stone-500');
+                    });
+                    
+                    e.target.classList.add('active', 'bg-white', 'dark:bg-stone-700', 'shadow-xs', 'text-stone-900', 'dark:text-stone-100');
+                    e.target.classList.remove('text-stone-500');
+
+                    state.currentFilter = e.target.getAttribute('data-filter');
+                    renderTasks();
+                });
+            });
+
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                state.searchQuery = e.target.value;
+                renderTasks();
+            });
+
+            const goalModal = document.getElementById('goalModal');
+            document.getElementById('addGoalBtn').addEventListener('click', () => goalModal.classList.remove('hidden'));
+            document.getElementById('closeGoalModal').addEventListener('click', () => goalModal.classList.add('hidden'));
+
+            document.getElementById('goalForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const title = document.getElementById('goalTitleInput').value.trim();
+                const target = parseInt(document.getElementById('goalTargetInput').value);
+
+                if (title && target > 0) {
+                    state.goals.push({
+                        id: Date.now().toString(),
+                        title,
+                        current: 0,
+                        target
+                    });
+                    saveData();
+                    renderGoals();
+                    goalModal.classList.add('hidden');
+                    document.getElementById('goalTitleInput').value = '';
+                }
+            });
+
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            document.getElementById('quoteText').innerText = `"${randomQuote.text}"`;
+            document.getElementById('quoteAuthor').innerText = `- ${randomQuote.author}`;
+
+            updateLevelUI();
+            renderTasks();
+            renderGoals();
+        });
+    </script>
+</body>
+</html>
